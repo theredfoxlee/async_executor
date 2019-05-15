@@ -1,17 +1,27 @@
-from . import celery_app
-from . import utils
-
 import subprocess
+import dramatiq
+import time
+
+from .models import Task
 
 
-@celery_app.task
-def execute(args, cwd=None):
-    """ executes command on the celery worker
-        and returns dict with a result """
+@dramatiq.actor
+def execute(task_name, args, cwd=None):
+    """ executes command on the dramatiq worker """
+    task = Task.get_by(name=task_name)
+    task.update_status('SENT')
+    start = time.time()
     completed_process = subprocess.run(
         args=args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         cwd=cwd
     )
-    return utils.make_process_result(completed_process)
+    elapsed = time.time() - start
+    task.update_result(
+        status='DONE',
+        returncode=completed_process.returncode,
+        stdout=completed_process.stdout,
+        stderr=completed_process.stderr,
+        duration=elapsed
+    )
