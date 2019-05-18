@@ -12,7 +12,7 @@ def md5(x):
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if session['username'] is None:
+        if 'username' not in session or session['username'] is None:
             abort(403, message='permission denied')
         return f(*args, **kwargs)
     return decorated_function

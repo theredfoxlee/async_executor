@@ -1,7 +1,7 @@
 version: "3.7"
 
 services:
-  celery_broker:
+  broker:
     image: rabbitmq:3.7.14-management
     ports:
       - "15672:15672"
@@ -10,15 +10,10 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-  celery_backend:
+  backend:
     image: redis:5.0.4
-    networks:
-      - fenix
-    deploy:
-      mode: replicated
-      replicas: 1
-  redis_database:
-    image: redis:5.0.4
+    ports:
+      - "6379:6379"
     networks:
       - fenix
     deploy:
@@ -26,26 +21,17 @@ services:
       replicas: 1
   async_worker:
     build: .
-    environment:
-      - CELERY_BROKER_URI=amqp://celery_broker:5672
-      - CELERY_BACKEND_URI=redis://celery_backend:6379
-      - REDIS_DB_URI=redis://redis_database:6379
-    command: ["celery", "worker", "-A", "async_executor.main", "-l", "info"]
+    command: ["dramatiq", "async_executor.tasks"]
     networks:
       - fenix
     deploy:
       mode: replicated
       replicas: 1
     depends_on:
-      - celery_backend
-      - celery_broker
+      - broker
+      - backend
   async_executor:
     build: .
-    environment:
-      - FLASK_APP=async_executor.main
-      - CELERY_BROKER_URI=amqp://celery_broker:5672
-      - CELERY_BACKEND_URI=redis://celery_backend:6379
-      - REDIS_DB_URI=redis://redis_database:6379
     command: ["flask", "run", "--host=0.0.0.0"]
     ports:
       - "5000:5000"
@@ -54,11 +40,13 @@ services:
     deploy:
       mode: replicated
       replicas: 1
+    environment:
+      - FLASK_APP=async_executor.main
     depends_on:
-      - celery_backend
-      - celery_broker
+      - broker
+      - backend
       - async_worker
-      - redis_database
+    restart: on-failure
 
 networks:
   fenix:

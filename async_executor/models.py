@@ -66,6 +66,10 @@ class Task(rom.Model):
         self.duration = duration
         self.save()
 
+    def update_status(self, status):
+        self.status = status.encode()
+        self.save()
+
     def json(self):
         return {
             'name': self.name.decode(),

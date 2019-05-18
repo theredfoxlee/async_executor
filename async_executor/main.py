@@ -1,7 +1,14 @@
 """ main.py is an entry point for flask and celery"""
 
 from .resources import *
-from . import flask_api
+
+from flask import Flask as FlaskApp
+from flask_restful import Api as FlaskApi
+
+flask_app = FlaskApp(__name__)
+flask_app.config['SECRET_KEY'] = 'cb79ec51-aba0-40ae-b439-61e5542868dd'
+
+flask_api = FlaskApi(flask_app)
 
 # routing definitions
 

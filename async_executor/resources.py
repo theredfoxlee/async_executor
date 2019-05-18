@@ -1,7 +1,7 @@
 from flask_restful import Resource, reqparse, abort
 from .utils import login_required
-from .resources import Task, User
-from .tasks import remote_exec
+from .models import Task, User
+from .tasks import execute
 from flask import session
 
 import uuid
@@ -26,7 +26,8 @@ class TaskPostApi(Resource):
     def __init__(self):
         super().__init__()
         self.parser = reqparse.RequestParser()
-        self.parser.add_argument('args', type=str, location='json')
+        self.parser.add_argument(
+            'args', type=str, location='json', required=True)
 
     @login_required
     def post(self):
@@ -39,7 +40,7 @@ class TaskPostApi(Resource):
             reporter=User.get_by(session['username'])
         )
         t.save()
-        remote_exec.send(task_name, args)
+        execute.send(task_name, args)
         return t.json()
 
 
@@ -56,8 +57,10 @@ class UserRegisterApi(Resource):
     def __init__(self):
         super().__init__()
         self.parser = reqparse.RequestParser()
-        self.parser.add_argument('username', type=str, location='json')
-        self.parser.add_argument('password', type=str, location='json')
+        self.parser.add_argument(
+            'username', type=str, location='json', required=True)
+        self.parser.add_argument(
+            'password', type=str, location='json', required=True)
 
     def post(self):
         json_data = self.parser.parse_args()
@@ -73,14 +76,18 @@ class UserLoginApi(Resource):
     def __init__(self):
         super().__init__()
         self.parser = reqparse.RequestParser()
-        self.parser.add_argument('username', type=str, location='json')
-        self.parser.add_argument('password', type=str, location='json')
+        self.parser.add_argument(
+            'username', type=str, location='json', required=True)
+        self.parser.add_argument(
+            'password', type=str, location='json', required=True)
 
     def post(self):
         json_data = self.parser.parse_args()
         username = json_data['username']
         password = json_data['password']
         u = User.get_by(username)
+        if u is None:
+            abort(403, message='permission denied')
         if u.compare(password):
             session['username'] = u.json()['name']
             return {'status': 'ok'}

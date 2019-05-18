@@ -1,8 +1,10 @@
 import subprocess
-import dramatiq
+#import dramatiq
 import time
 
 from .models import Task
+
+from . import dramatiq
 
 
 @dramatiq.actor
@@ -18,8 +20,7 @@ def execute(task_name, args, cwd=None):
         cwd=cwd
     )
     elapsed = time.time() - start
-    task.update_result(
-        status='DONE',
+    task.update_done(
         returncode=completed_process.returncode,
         stdout=completed_process.stdout,
         stderr=completed_process.stderr,
