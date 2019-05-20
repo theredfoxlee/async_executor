@@ -13,12 +13,12 @@ class TaskGetApi(Resource):
     def get(self, name):
         try:
             j = Task.get_by(name).json()
-            if j.reporter != session['username']:
+            if j['reporter'] != session['username']:
                 raise AttributeError
             return j
         except AttributeError as e:
             print(e)
-            abort(404, message=f"unknown task: {name}")
+            abort(404, message="unknown task: {}".format(name))
 
 
 class TaskPostApi(Resource):
@@ -28,19 +28,27 @@ class TaskPostApi(Resource):
         self.parser = reqparse.RequestParser()
         self.parser.add_argument(
             'args', type=str, location='json', required=True)
+        self.parser.add_argument(
+            'timeout', type=str, location='json', default=None)
+        self.parser.add_argument(
+            'hosts', type=str, location='json', default='')
 
     @login_required
     def post(self):
         json_data = self.parser.parse_args()
         args = json_data['args']
+        timeout = json_data['timeout']
+        hosts = json_data['hosts']
         task_name = str(uuid.uuid4())
         t = Task.create(
             name=task_name,
             args=args,
-            reporter=User.get_by(session['username'])
+            reporter=User.get_by(session['username']),
+            timeout=timeout,
+            hosts=hosts if hosts else ''
         )
         t.save()
-        execute.send(task_name, args)
+        execute.send(task_name, args.split(), timeout=timeout, hosts=hosts)
         return t.json()
 
 
@@ -93,7 +101,6 @@ class UserLoginApi(Resource):
             return {'status': 'ok'}
         else:
             return {'status': 'not ok'}
-        return {'status': 'ok'}
 
 
 class UserLogoutApi(Resource):
@@ -101,4 +108,4 @@ class UserLogoutApi(Resource):
     @login_required
     def get(self):
         session.pop('username')
-        return {'status', 'ok'}
+        return {'status': 'ok'}

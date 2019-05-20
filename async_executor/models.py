@@ -19,7 +19,6 @@ class User(rom.Model):
 
     def compare(self, password):
         password_h = md5(password)
-        print(f'{password_h} == {self.password_h.decode()}')
         return self.password_h.decode() == password_h
 
     def json(self):
@@ -40,14 +39,18 @@ class Task(rom.Model):
         'User', on_delete='cascade', required=True)
     created_at = rom.Float(required=True, default=time.time)
     duration = rom.Float()
+    timeout = rom.Float()
+    hosts = rom.String(required=True)
 
     @classmethod
-    def create(cls, name, args, reporter):
+    def create(cls, name, args, reporter, timeout, hosts):
         return cls(
             name=name.encode(),
             args=args.encode(),
             status=b'CREATED',
-            reporter=reporter
+            reporter=reporter,
+            timeout=timeout,
+            hosts=hosts.encode()
         )
 
     @classmethod
@@ -70,6 +73,11 @@ class Task(rom.Model):
         self.status = status.encode()
         self.save()
 
+    def update_timeouted(self, duration):
+        self.status = b'TIMEOUTED'
+        self.duration = duration
+        self.save()
+
     def json(self):
         return {
             'name': self.name.decode(),
@@ -86,5 +94,7 @@ class Task(rom.Model):
                        else self.stderr),
             'reporter': self.reporter.name.decode(),
             'created_at': self.created_at,
-            'duration': self.duration
+            'duration': self.duration,
+            'timeout': self.timeout,
+            'hosts': self.hosts.decode()
         }

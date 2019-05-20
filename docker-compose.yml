@@ -21,7 +21,7 @@ services:
       replicas: 1
   async_worker:
     build: .
-    command: ["dramatiq", "async_executor.tasks"]
+    command:  bash -c '/usr/sbin/sshd && dramatiq async_executor.tasks'
     networks:
       - fenix
     deploy:
@@ -33,16 +33,15 @@ services:
     restart: on-failure
   async_executor:
     build: .
+    command: bash -c '/usr/sbin/sshd && flask run --host 0.0.0.0'
     ports:
       - "5000:5000"
-      - "30:20"
+      - "30:22"
     networks:
       - fenix
     deploy:
       mode: replicated
       replicas: 1
-    environment:
-      - FLASK_APP=async_executor.main
     depends_on:
       - broker
       - backend
@@ -50,6 +49,7 @@ services:
     restart: on-failure
   mpi_worker:
     build: .
+    command:  /usr/sbin/sshd -D
     networks:
       - fenix
     deploy:
