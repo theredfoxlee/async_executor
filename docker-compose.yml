@@ -1,0 +1,61 @@
+version: "3"
+
+services:
+  broker:
+    image: rabbitmq:3.7.14-management
+    ports:
+      - "15672:15672"
+    networks:
+      - fenix
+    deploy:
+      mode: replicated
+      replicas: 1
+  backend:
+    image: redis:5.0.4
+    ports:
+      - "6379:6379"
+    networks:
+      - fenix
+    deploy:
+      mode: replicated
+      replicas: 1
+  async_worker:
+    build: .
+    command: ["dramatiq", "async_executor.tasks"]
+    networks:
+      - fenix
+    deploy:
+      mode: replicated
+      replicas: 1
+    depends_on:
+      - broker
+      - backend
+    restart: on-failure
+  async_executor:
+    build: .
+    ports:
+      - "5000:5000"
+      - "30:20"
+    networks:
+      - fenix
+    deploy:
+      mode: replicated
+      replicas: 1
+    environment:
+      - FLASK_APP=async_executor.main
+    depends_on:
+      - broker
+      - backend
+      - async_worker
+    restart: on-failure
+  mpi_worker:
+    build: .
+    networks:
+      - fenix
+    deploy:
+      mode: replicated
+      replicas: 1
+
+networks:
+  fenix:
+    driver: bridge
